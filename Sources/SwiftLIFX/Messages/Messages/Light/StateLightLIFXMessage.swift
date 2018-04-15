@@ -37,6 +37,12 @@ struct StateLightLIFXMessage: LIFXMessage {
     }
     
     func encode() -> [UInt8] {
-        return ByteUtils.encode(value1: powerState.rawValue)
+        return [
+            color.encode(),
+            ByteUtils.valueToByteArray(Int16(0)),
+            ByteUtils.valueToByteArray(powerState.rawValue),
+            ByteUtils.stringToByteArray(label, length: 32),
+            ByteUtils.valueToByteArray(UInt64(0)),
+        ].flatMap { $0 }
     }
 }

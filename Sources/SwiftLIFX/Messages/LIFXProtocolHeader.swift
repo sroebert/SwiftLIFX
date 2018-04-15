@@ -85,8 +85,12 @@ struct LIFXProtocolHeader {
         offset += MemoryLayout.size(ofValue: source)
         
         let targetValue = try ByteUtils.bytesToValue(offset: offset, bytes: bytes, type: UInt64.self)
-        target = MacAddress(intValue: targetValue)
-        offset += MemoryLayout.size(ofValue: target)
+        if targetValue != 0 {
+            target = MacAddress(intValue: targetValue)
+        } else {
+            target = nil
+        }
+        offset += MemoryLayout<UInt64>.size
         
         offset += 6 // Reserved
         let reservedAckResponse = try ByteUtils.bytesToValue(offset: offset, bytes: bytes, type: UInt8.self)

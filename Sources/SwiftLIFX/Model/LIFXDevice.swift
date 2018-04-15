@@ -9,6 +9,28 @@ public class LIFXDevice: Hashable, Equatable {
         case UDP = 1
     }
     
+    public struct Firmware {
+        public var build: UInt64
+        public var version: UInt32
+        
+        public init(build: UInt64, version: UInt32) {
+            self.build = build
+            self.version = version
+        }
+    }
+    
+    public struct Version {
+        public var vendor: UInt32
+        public var product: UInt32
+        public var hardwareVersion: UInt32
+        
+        public init(vendor: UInt32, product: UInt32, hardwareVersion: UInt32) {
+            self.vendor = vendor
+            self.product = product
+            self.hardwareVersion = hardwareVersion
+        }
+    }
+    
     public enum PowerState: UInt16 {
         case on = 65535
         case off = 0

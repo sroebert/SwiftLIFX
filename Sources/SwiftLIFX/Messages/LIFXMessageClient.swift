@@ -5,7 +5,7 @@ struct LIFXMessageClient {
     
     // MARK: - Constants
     
-    private static let broadcastPort: UInt16 = 56700
+    static let broadcastPort: UInt16 = 56700
     
     // MARK: - Types
     
@@ -53,9 +53,12 @@ struct LIFXMessageClient {
         let futures = addresses.map { address in
             send(message, for: device, source: source, to: address, using: group)
         }
-        return EventLoopFuture<Void>.andAll(futures, eventLoop: group.next()).thenThrowing {
-            try group.syncShutdownGracefully()
+        
+        let future = EventLoopFuture<Void>.andAll(futures, eventLoop: group.next())
+        future.whenComplete {
+            try? group.syncShutdownGracefully()
         }
+        return future
     }
     
     static func send<Message: LIFXMessage>(_ message: LIFXMessage, for device: LIFXDevice, source: UInt32, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<Response<Message>> {
@@ -73,10 +76,10 @@ struct LIFXMessageClient {
                 send(message, for: device, source: source, responseType: Message.self, timeout: timeout, to: address, using: group)
             }
         }
-        return future.thenThrowing { result in
-            try group.syncShutdownGracefully()
-            return result
+        future.whenComplete {
+            try? group.syncShutdownGracefully()
         }
+        return future
     }
     
     static func send<Message: LIFXMessage>(_ message: LIFXMessage, source: UInt32, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<[Response<Message>]> {
@@ -93,6 +96,10 @@ struct LIFXMessageClient {
             }
         }
         promise.succeed(result: [])
+        
+        future.whenComplete {
+            try? group.syncShutdownGracefully()
+        }
         return future
     }
     
@@ -138,7 +145,9 @@ struct LIFXMessageClient {
             group: group
         )
         
-        return send(message, using: configuration).map { _ in }
+        return send(message, using: configuration).then { (channel, _) in
+            return channel.close(mode: .all).thenIfErrorThrowing { _ in }
+        }
     }
     
     private static func send<Message: LIFXMessage>(_ message: LIFXMessage, for device: LIFXDevice, source: UInt32, responseType: Message.Type, timeout: TimeAmount, to socketAddress: SocketAddress, using group: EventLoopGroup) -> EventLoopFuture<Response<Message>> {
@@ -152,10 +161,12 @@ struct LIFXMessageClient {
             group: group
         )
         
-        return send(message, using: configuration).then { handler -> EventLoopFuture<Handler> in
+        return send(message, using: configuration).then { (channel, handler) -> EventLoopFuture<Handler> in
             let promise: EventLoopPromise<Handler> = group.next().newPromise()
             _ = group.next().scheduleTask(in: timeout) {
-                promise.succeed(result: handler)
+                channel.close(mode: .all).whenComplete {
+                    promise.succeed(result: handler)
+                }
             }
             return promise.futureResult
         }.thenThrowing { handler -> Response<Message> in
@@ -180,10 +191,12 @@ struct LIFXMessageClient {
             group: group
         )
         
-        return send(message, using: configuration).then { handler -> EventLoopFuture<Handler> in
+        return send(message, using: configuration).then { (channel, handler) -> EventLoopFuture<Handler> in
             let promise: EventLoopPromise<Handler> = group.next().newPromise()
             _ = group.next().scheduleTask(in: timeout) {
-                promise.succeed(result: handler)
+                channel.close(mode: .all).whenComplete {
+                    promise.succeed(result: handler)
+                }
             }
             return promise.futureResult
         }.thenThrowing { handler -> [Response<Message>] in
@@ -191,8 +204,9 @@ struct LIFXMessageClient {
         }
     }
     
-    private static func send(_ message: LIFXMessage, using configuration: SendConfiguration) -> EventLoopFuture<Handler> {
-        
+    // MARK: - Datagram Send
+    
+    private static func send(_ message: LIFXMessage, using configuration: SendConfiguration) -> EventLoopFuture<(Channel, Handler)> {
         let resultHandler = Handler()
         let bootstrap = DatagramBootstrap(group: configuration.group)
             .channelOption(ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR), value: 1)
@@ -213,28 +227,30 @@ struct LIFXMessageClient {
         
         let headerData = header.encode()
         
-        return bootstrap.bind(host: "0.0.0.0", port: 0).then { channel -> EventLoopFuture<Void> in
+        return bootstrap.bind(host: "0.0.0.0", port: 0).then { channel -> EventLoopFuture<(Channel, Handler)> in
             var buffer = channel.allocator.buffer(capacity: header.size)
             buffer.write(bytes: headerData)
             buffer.write(bytes: payload)
             
             let envelope = AddressedEnvelope<ByteBuffer>(remoteAddress: configuration.socketAddress, data: buffer)
-            return channel.writeAndFlush(envelope)
-        }.thenThrowing {
-            return resultHandler
+            return channel.writeAndFlush(envelope).thenIfError { error in
+                channel.close(mode: .all).thenIfErrorThrowing { _ in }.thenThrowing { throw error }
+            }.map {
+                return (channel, resultHandler)
+            }
         }
     }
     
     // MARK: - Handler
     
     private class Handler: ChannelInboundHandler {
-        public typealias InboundIn = AddressedEnvelope<ByteBuffer>
-        public typealias OutboundOut = AddressedEnvelope<ByteBuffer>
+        typealias InboundIn = AddressedEnvelope<ByteBuffer>
+        typealias OutboundOut = AddressedEnvelope<ByteBuffer>
         
-        public var parsedResponses: [UntypedResponse] = []
-        public var parsedErrors: [Error] = []
+        var parsedResponses: [UntypedResponse] = []
+        var parsedErrors: [Error] = []
         
-        public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+        func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
             var envelope = unwrapInboundIn(data)
             let headerBytes = envelope.data.readBytes(length: LIFXProtocolHeader.size) ?? []
             let payloadBytes = envelope.data.readBytes(length: envelope.data.readableBytes) ?? []
@@ -261,11 +277,11 @@ struct LIFXMessageClient {
             }
         }
         
-        public func channelReadComplete(ctx: ChannelHandlerContext) {
+        func channelReadComplete(ctx: ChannelHandlerContext) {
             ctx.flush()
         }
 
-        public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+        func errorCaught(ctx: ChannelHandlerContext, error: Error) {
             ctx.close(promise: nil)
         }
     }

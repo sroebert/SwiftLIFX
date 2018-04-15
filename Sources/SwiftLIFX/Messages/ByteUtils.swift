@@ -25,6 +25,21 @@ struct ByteUtils {
         return array
     }
     
+    static func stringToByteArray(_ string: String, length: Int) -> [UInt8] {
+        guard var characters = string.cString(using: .utf8), !characters.isEmpty else {
+            return []
+        }
+        
+        _ = characters.removeLast()
+        var bytes = characters.map { UInt8($0) }
+        if bytes.count > length {
+            bytes.removeLast(bytes.count - length)
+        } else if bytes.count < length {
+            bytes.append(contentsOf: Array(repeating: 0, count: length - bytes.count))
+        }
+        return bytes
+    }
+    
     static func bytesToValue<Value>(offset: Int, bytes: [UInt8], type: Value.Type) throws -> Value {
         let size = MemoryLayout<Value>.size
         guard offset + size <= bytes.count else {
@@ -47,7 +62,9 @@ struct ByteUtils {
         }
         
         var bytes = Array(bytes[offset..<(offset + count)])
-        bytes.append(0)
+        if bytes.last != 0 {
+            bytes.append(0)
+        }
         return String(cString: &bytes)
     }
     
