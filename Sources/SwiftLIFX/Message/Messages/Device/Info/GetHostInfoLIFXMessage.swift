@@ -1,18 +1,20 @@
 import Foundation
 
-struct GetHostInfoLIFXMessage: LIFXMessage {
-    
-    // MARK: - Init
-    
-    init() {
+extension LIFXMessages {
+    public struct GetHostInfo: LIFXMessage {
         
-    }
-    
-    // MARK: - LIFXMessage
-    
-    static let id: UInt16 = 12
-    
-    init(payload: [UInt8]) throws {
+        // MARK: - Init
         
+        public init() {
+            
+        }
+        
+        // MARK: - LIFXMessage
+        
+        public static let id: UInt16 = 12
+        
+        public init(payload: [UInt8]) throws {
+            
+        }
     }
 }

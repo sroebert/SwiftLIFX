@@ -53,24 +53,14 @@ public class LIFXServer: LIFXServerHandlerDelegate {
     // MARK: - Send
     
     private func send(_ message: LIFXMessage, inResponseTo request: LIFXServerRequest) {
-        let payload = message.encode()
-        
-        var header = LIFXProtocolHeader(type: type(of: message).id)
-        header.size = LIFXProtocolHeader.size + payload.count
+        var header = LIFXProtocolHeader(for: message)
         header.isTagged = false
         header.source = request.header.source
         header.target = macAddress
         header.sequence = request.header.sequence
-        let headerBytes = header.encode()
-        
-        var buffer = channel.allocator.buffer(capacity: header.size)
-        buffer.write(bytes: headerBytes)
-        buffer.write(bytes: payload)
         
         debugPrint("Sending: \(message)")
-        
-        let envelope = AddressedEnvelope<ByteBuffer>(remoteAddress: request.origin, data: buffer)
-        _ = channel.writeAndFlush(envelope)
+        _ = channel.writeEnvelope(for: header, message: message, to: request.origin)
     }
     
     // MARK: - LIFXServerHandlerDelegate
@@ -84,67 +74,67 @@ public class LIFXServer: LIFXServerHandlerDelegate {
         debugPrint("Received: \(request.message)")
         
         if request.header.isAcknowledgementRequired {
-            send(AcknowledgementLIFXMessage(), inResponseTo: request)
+            send(LIFXMessages.Acknowledgement(), inResponseTo: request)
         }
         
         switch request.message {
-        case is GetServiceLIFXMessage:
-            send(StateServiceLIFXMessage(), inResponseTo: request)
+        case is LIFXMessages.GetService:
+            send(LIFXMessages.StateService(), inResponseTo: request)
             
-        case is GetHostInfoLIFXMessage:
-            send(StateHostInfoLIFXMessage(), inResponseTo: request)
+        case is LIFXMessages.GetHostInfo:
+            send(LIFXMessages.StateHostInfo(), inResponseTo: request)
             
-        case is GetHostFirmwareLIFXMessage:
-            send(StateHostFirmwareLIFXMessage(firmware: firmware), inResponseTo: request)
+        case is LIFXMessages.GetHostFirmware:
+            send(LIFXMessages.StateHostFirmware(firmware: firmware), inResponseTo: request)
             
-        case is GetWifiInfoLIFXMessage:
-            send(StateWifiInfoLIFXMessage(), inResponseTo: request)
+        case is LIFXMessages.GetWifiInfo:
+            send(LIFXMessages.StateWifiInfo(), inResponseTo: request)
             
-        case is GetWifiFirmwareLIFXMessage:
-            send(StateWifiFirmwareLIFXMessage(firmware: .init(build: 0, version: 0)), inResponseTo: request)
+        case is LIFXMessages.GetWifiFirmware:
+            send(LIFXMessages.StateWifiFirmware(firmware: .init(build: 0, version: 0)), inResponseTo: request)
             
-        case is GetPowerLIFXMessage:
-            send(StatePowerLIFXMessage(powerState: powerState), inResponseTo: request)
+        case is LIFXMessages.GetPower:
+            send(LIFXMessages.StatePower(powerState: powerState), inResponseTo: request)
             
-        case let message as SetPowerLIFXMessage:
+        case let message as LIFXMessages.SetPower:
             powerState = message.powerState
             if request.header.isResponseRequired {
-                send(StatePowerLIFXMessage(powerState: powerState), inResponseTo: request)
+                send(LIFXMessages.StatePower(powerState: powerState), inResponseTo: request)
             }
             
-        case is GetLabelLIFXMessage:
-            send(StateLabelLIFXMessage(label: label), inResponseTo: request)
+        case is LIFXMessages.GetLabel:
+            send(LIFXMessages.StateLabel(label: label), inResponseTo: request)
             
-        case let message as SetLabelLIFXMessage:
+        case let message as LIFXMessages.SetLabel:
             label = message.label
             if request.header.isResponseRequired {
-                send(StateLabelLIFXMessage(label: label), inResponseTo: request)
+                send(LIFXMessages.StateLabel(label: label), inResponseTo: request)
             }
             
-        case is GetVersionLIFXMessage:
-            send(StateVersionLIFXMessage(version: version), inResponseTo: request)
+        case is LIFXMessages.GetVersion:
+            send(LIFXMessages.StateVersion(version: version), inResponseTo: request)
             
-        case is GetInfoLIFXMessage:
+        case is LIFXMessages.GetInfo:
             let time = UInt64(Date().timeIntervalSince1970 * 1000000000)
             let uptime = UInt64(Date().timeIntervalSince(startedAt) * 1000000000)
-            send(StateInfoLIFXMessage(time: time, uptime: uptime, downtime: 0), inResponseTo: request)
+            send(LIFXMessages.StateInfo(time: time, uptime: uptime, downtime: 0), inResponseTo: request)
             
-        case is GetLightStateLIFXMessage:
-            send(StateLightLIFXMessage(color: color, powerState: powerState, label: label), inResponseTo: request)
+        case is LIFXMessages.GetLightState:
+            send(LIFXMessages.StateLight(color: color, powerState: powerState, label: label), inResponseTo: request)
             
-        case let message as SetLightColorLIFXMessage:
+        case let message as LIFXMessages.SetLightColor:
             color = message.color
             if request.header.isResponseRequired {
-                send(StateLightLIFXMessage(color: color, powerState: powerState, label: label), inResponseTo: request)
+                send(LIFXMessages.StateLight(color: color, powerState: powerState, label: label), inResponseTo: request)
             }
             
-        case is GetPowerLIFXMessage:
-            send(StatePowerLightLIFXMessage(powerState: powerState), inResponseTo: request)
+        case is LIFXMessages.GetPower:
+            send(LIFXMessages.StatePowerLight(powerState: powerState), inResponseTo: request)
             
-        case let message as SetPowerLightLIFXMessage:
+        case let message as LIFXMessages.SetPowerLight:
             powerState = message.powerState
             if request.header.isResponseRequired {
-                send(StateLightLIFXMessage(color: color, powerState: powerState, label: label), inResponseTo: request)
+                send(LIFXMessages.StateLight(color: color, powerState: powerState, label: label), inResponseTo: request)
             }
             
         default:
@@ -181,7 +171,7 @@ private class LIFXServerHandler: ChannelInboundHandler {
                 throw LIFXMessageParsingError("Invalid packet size")
             }
             
-            guard let messageType = LIFXMessageTypes.mapping[header.type] else {
+            guard let messageType = LIFXMessages.mapping[header.type] else {
                 debugPrint("Received unknown message with type: \(header.type)")
                 throw LIFXMessageParsingError("Unknown message type \(header.type)")
             }

@@ -1,18 +1,20 @@
 import Foundation
 
-struct GetLabelLIFXMessage: LIFXMessage {
-    
-    // MARK: - Init
-    
-    init() {
+extension LIFXMessages {
+    public struct GetLabel: LIFXMessage {
         
-    }
-    
-    // MARK: - LIFXMessage
-    
-    static let id: UInt16 = 23
-    
-    init(payload: [UInt8]) throws {
+        // MARK: - Init
         
+        public init() {
+            
+        }
+        
+        // MARK: - LIFXMessage
+        
+        public static let id: UInt16 = 23
+        
+        public init(payload: [UInt8]) throws {
+            
+        }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct LIFXProtocolHeader {
+public struct LIFXProtocolHeader {
     
     // MARK: - Constants
     
@@ -45,29 +45,33 @@ struct LIFXProtocolHeader {
         }
     }
     
-    static let size = 36
+    public static let size = 36
     
     // MARK: - Frame Properties
     
-    var size: Int = 0
-    var isTagged: Bool = true
-    var source: UInt32 = 0
+    public var size: Int = 0
+    public var isTagged: Bool = true
+    public var source: UInt32 = 0
     
     // MARK: - Frame Address Properties
     
-    var target: MacAddress?
-    var isAcknowledgementRequired: Bool = false
-    var isResponseRequired: Bool = false
-    var sequence: UInt8 = 0
+    public var target: MacAddress?
+    public var isAcknowledgementRequired: Bool = false
+    public var isResponseRequired: Bool = false
+    public var sequence: UInt8 = 0
     
     // MARK: - Protocol Header Properties
     
-    var type: UInt16
+    public let type: UInt16
     
     // MARK: - Init
 
-    init(type: UInt16) {
-        self.type = type
+    public init(messageType: LIFXMessage.Type) {
+        self.type = messageType.id
+    }
+    
+    public init(for message: LIFXMessage) {
+        self.init(messageType: Swift.type(of: message))
     }
 
     init(bytes: [UInt8]) throws {

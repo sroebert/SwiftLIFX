@@ -1,18 +1,20 @@
 import Foundation
 
-struct GetPowerLightLIFXMessage: LIFXMessage {
-    
-    // MARK: - Init
-    
-    init() {
+extension LIFXMessages {
+    public struct GetPowerLight: LIFXMessage {
         
-    }
-    
-    // MARK: - LIFXMessage
-    
-    static let id: UInt16 = 116
-    
-    init(payload: [UInt8]) throws {
+        // MARK: - Init
         
+        public init() {
+            
+        }
+        
+        // MARK: - LIFXMessage
+        
+        public static let id: UInt16 = 116
+        
+        public init(payload: [UInt8]) throws {
+            
+        }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-protocol LIFXMessage {
+public protocol LIFXMessage {
     static var id: UInt16 { get }
     
     init(payload: [UInt8]) throws
@@ -9,15 +9,15 @@ protocol LIFXMessage {
 }
 
 extension LIFXMessage {
-    func encode() -> [UInt8] {
+    public func encode() -> [UInt8] {
         return []
     }
     
-    func sendToAll() {
+    public func sendToAll() {
         
     }
     
-    func send(to device: LIFXDevice) {
+    public func send(to device: LIFXDevice) {
         
     }
 }

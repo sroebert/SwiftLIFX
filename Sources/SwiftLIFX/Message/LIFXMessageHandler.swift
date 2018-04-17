@@ -1,12 +1,12 @@
 import NIO
 
-class LIFXMessageHandler: ChannelInboundHandler {
-    typealias InboundIn = AddressedEnvelope<ByteBuffer>
-    typealias OutboundOut = AddressedEnvelope<ByteBuffer>
+public class LIFXMessageHandler: ChannelInboundHandler {
+    public typealias InboundIn = AddressedEnvelope<ByteBuffer>
+    public typealias OutboundOut = AddressedEnvelope<ByteBuffer>
     
-    weak var delegate: LIFXMessageHandlerDelegate?
+    public weak var delegate: LIFXMessageHandlerDelegate?
 
-    func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
+    public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         var envelope = unwrapInboundIn(data)
         let headerBytes = envelope.data.readBytes(length: LIFXProtocolHeader.size) ?? []
         let payloadBytes = envelope.data.readBytes(length: envelope.data.readableBytes) ?? []
@@ -17,7 +17,7 @@ class LIFXMessageHandler: ChannelInboundHandler {
                 throw LIFXMessageParsingError("Invalid packet size")
             }
             
-            guard let messageType = LIFXMessageTypes.mapping[header.type] else {
+            guard let messageType = LIFXMessages.mapping[header.type] else {
                 debugPrint("Received unknown message with type: \(header.type)")
                 throw LIFXMessageParsingError("Unknown message type \(header.type)")
             }
@@ -30,21 +30,27 @@ class LIFXMessageHandler: ChannelInboundHandler {
         }
     }
 
-    func channelReadComplete(ctx: ChannelHandlerContext) {
+    public func channelReadComplete(ctx: ChannelHandlerContext) {
         ctx.flush()
     }
 
-    func errorCaught(ctx: ChannelHandlerContext, error: Error) {
+    public func errorCaught(ctx: ChannelHandlerContext, error: Error) {
         ctx.close(promise: nil)
     }
 }
 
-struct LIFXParsedEnvelope {
-    var header: LIFXProtocolHeader
-    var message: LIFXMessage
-    var origin: SocketAddress
+public struct LIFXParsedEnvelope {
+    public var header: LIFXProtocolHeader
+    public var message: LIFXMessage
+    public var origin: SocketAddress
+    
+    public init(header: LIFXProtocolHeader, message: LIFXMessage, origin: SocketAddress) {
+        self.header = header
+        self.message = message
+        self.origin = origin
+    }
 }
 
-protocol LIFXMessageHandlerDelegate: class {
+public protocol LIFXMessageHandlerDelegate: class {
     func didReceive(envelope: LIFXParsedEnvelope, for handler: LIFXMessageHandler)
 }

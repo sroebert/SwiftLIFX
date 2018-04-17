@@ -1,7 +1,7 @@
 import Foundation
 import NIO
 
-class LIFXClient: LIFXMessageHandlerDelegate {
+public class LIFXClient: LIFXMessageHandlerDelegate {
     
     // MARK: - Types
     
@@ -13,7 +13,7 @@ class LIFXClient: LIFXMessageHandlerDelegate {
         var socketAddress: SocketAddress
     }
     
-    struct Response<Message: LIFXMessage> {
+    public struct Response<Message: LIFXMessage> {
         var origin: SocketAddress
         var header: LIFXProtocolHeader
         var message: Message
@@ -26,13 +26,13 @@ class LIFXClient: LIFXMessageHandlerDelegate {
         }
     }
     
-    enum ResponseError {
+    public enum ResponseError {
         case tooManyRequests
     }
     
     // MARK: - Properties
     
-    let source: UInt32
+    public let source: UInt32
     
     private let group: EventLoopGroup
     private var handler: LIFXMessageHandler?
@@ -49,7 +49,7 @@ class LIFXClient: LIFXMessageHandlerDelegate {
     
     // MARK: - Init
     
-    init(source: UInt32) {
+    public init(source: UInt32) {
         self.source = source
         group = MultiThreadedEventLoopGroup(numThreads: 1)
     }
@@ -64,28 +64,28 @@ class LIFXClient: LIFXMessageHandlerDelegate {
     // MARK: - Send
     
     @discardableResult
-    func send(_ message: LIFXMessage, for device: LIFXDevice? = nil) -> EventLoopFuture<Void> {
+    public func send(_ message: LIFXMessage, for device: LIFXDevice? = nil) -> EventLoopFuture<Void> {
         return getSequence().then { sequence in
             self.send(message, for: device, sequence: sequence, isAcknowledgementRequired: false, isResponseRequired: false)
         }
     }
     
-    func send<Message: LIFXMessage>(_ message: LIFXMessage, for device: LIFXDevice, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<Response<Message>> {
+    public func send<Message: LIFXMessage>(_ message: LIFXMessage, for device: LIFXDevice, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<Response<Message>> {
         return getSequence().then { sequence in
             let responseFuture = self.getSingleResponseFuture(forSequence: sequence, responseType: responseType, timeout: timeout)
-            let isAcknowledgementRequired = responseType == AcknowledgementLIFXMessage.self
-            let isResponseRequired = responseType != AcknowledgementLIFXMessage.self
+            let isAcknowledgementRequired = responseType == LIFXMessages.Acknowledgement.self
+            let isResponseRequired = responseType != LIFXMessages.Acknowledgement.self
             return self.send(message, for: device, sequence: sequence, isAcknowledgementRequired: isAcknowledgementRequired, isResponseRequired: isResponseRequired).then {
                 responseFuture
             }
         }
     }
     
-    func send<Message: LIFXMessage>(_ message: LIFXMessage, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<[Response<Message>]> {
+    public func send<Message: LIFXMessage>(_ message: LIFXMessage, responseType: Message.Type, timeout: TimeAmount = .seconds(2)) -> EventLoopFuture<[Response<Message>]> {
         return getSequence().then { sequence in
             let responseFuture = self.getMultiResponseFuture(forSequence: sequence, responseType: responseType, timeout: timeout)
-            let isAcknowledgementRequired = responseType == AcknowledgementLIFXMessage.self
-            let isResponseRequired = responseType != AcknowledgementLIFXMessage.self
+            let isAcknowledgementRequired = responseType == LIFXMessages.Acknowledgement.self
+            let isResponseRequired = responseType != LIFXMessages.Acknowledgement.self
             return self.send(message, for: nil, sequence: sequence, isAcknowledgementRequired: isAcknowledgementRequired, isResponseRequired: isResponseRequired).then {
                 responseFuture
             }
@@ -166,7 +166,7 @@ class LIFXClient: LIFXMessageHandlerDelegate {
     }
     
     private func header(for message: LIFXMessage, using configuration: SendConfiguration) -> LIFXProtocolHeader {
-        var header = LIFXProtocolHeader(type: type(of: message).id)
+        var header = LIFXProtocolHeader(for: message)
         header.isTagged = configuration.device == nil
         header.source = self.source
         header.target = configuration.device?.macAddress
@@ -178,7 +178,21 @@ class LIFXClient: LIFXMessageHandlerDelegate {
     
     // MARK: - Socket
     
-    func closeSocket() {
+    public var isSocketActive: Bool {
+        if group.next().inEventLoop {
+            return channel?.isActive == true
+        } else {
+            do {
+                return try group.next().submit {
+                    return self.channel?.isActive == true
+                }.wait()
+            } catch {
+                return false
+            }
+        }
+    }
+    
+    public func closeSocket() {
         _ = group.next().submit {
             guard let channel = self.channel else {
                 return
@@ -296,7 +310,7 @@ class LIFXClient: LIFXMessageHandlerDelegate {
     
     // MARK: - LIFXMessageHandlerDelegate
     
-    func didReceive(envelope: LIFXParsedEnvelope, for handler: LIFXMessageHandler) {
+    public func didReceive(envelope: LIFXParsedEnvelope, for handler: LIFXMessageHandler) {
         if let promise = singleResponsePromises[envelope.header.sequence] {
             promise.succeed(result: envelope)
         } else if var responses = multiResponseEnvelopes[envelope.header.sequence] {

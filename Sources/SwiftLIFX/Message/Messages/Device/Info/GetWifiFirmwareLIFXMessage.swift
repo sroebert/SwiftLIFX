@@ -1,18 +1,20 @@
 import Foundation
 
-struct GetWifiFirmwareLIFXMessage: LIFXMessage {
-    
-    // MARK: - Init
-    
-    init() {
+extension LIFXMessages {
+    public struct GetWifiFirmware: LIFXMessage {
         
-    }
-    
-    // MARK: - LIFXMessage
-    
-    static let id: UInt16 = 18
-    
-    init(payload: [UInt8]) throws {
+        // MARK: - Init
         
+        public init() {
+            
+        }
+        
+        // MARK: - LIFXMessage
+        
+        public static let id: UInt16 = 18
+        
+        public init(payload: [UInt8]) throws {
+            
+        }
     }
 }

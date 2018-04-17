@@ -5,7 +5,7 @@ public class LIFXDevice: Hashable, Equatable {
     
     // MARK: - Types
     
-    enum Service: UInt8 {
+    public enum Service: UInt8 {
         case UDP = 1
     }
     
