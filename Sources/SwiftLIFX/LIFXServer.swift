@@ -45,7 +45,7 @@ public class LIFXServer: LIFXServerHandlerDelegate {
             try! group.syncShutdownGracefully()
         }
         
-        channel = try! bootstrap.bind(host: "0.0.0.0", port: Int(LIFXMessageClient.broadcastPort)).wait()
+        channel = try! bootstrap.bind(host: "0.0.0.0", port: Int(LIFXConstants.broadcastPort)).wait()
         
         try channel.closeFuture.wait()
     }

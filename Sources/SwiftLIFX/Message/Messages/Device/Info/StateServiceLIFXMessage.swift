@@ -9,7 +9,7 @@ struct StateServiceLIFXMessage: LIFXMessage {
     
     // MARK: - Init
     
-    init(service: LIFXLight.Service = .UDP, port: UInt32 = UInt32(LIFXMessageClient.broadcastPort)) {
+    init(service: LIFXLight.Service = .UDP, port: UInt32 = UInt32(LIFXConstants.broadcastPort)) {
         self.service = service
         self.port = port
     }

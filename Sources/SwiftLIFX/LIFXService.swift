@@ -8,17 +8,20 @@ public class LIFXService {
     public let source: UInt32
     public var timeout: TimeAmount
     
+    private let client: LIFXClient
+    
     // MARK: - Init
     
     public init(source: UInt32, timeout: TimeAmount = .seconds(1)) {
         self.source = source
         self.timeout = timeout
+        client = LIFXClient(source: source)
     }
     
     // MARK: - Devices
     
     public func findDevices() -> EventLoopFuture<[LIFXDevice]> {
-        return LIFXMessageClient.send(GetServiceLIFXMessage(), source: source, responseType: StateServiceLIFXMessage.self, timeout: timeout).map { responses in
+        return client.send(GetServiceLIFXMessage(), responseType: StateServiceLIFXMessage.self, timeout: timeout).map { responses in
             responses.compactMap { $0.device }
         }
     }
@@ -26,14 +29,14 @@ public class LIFXService {
     // MARK: - Power
     
     public func getPowerState(for device: LIFXDevice) -> EventLoopFuture<LIFXDevice.PowerState> {
-        return LIFXMessageClient.send(GetPowerLIFXMessage(), for: device, source: source, responseType: StatePowerLIFXMessage.self, timeout: timeout).map { response in
+        return client.send(GetPowerLIFXMessage(), for: device, responseType: StatePowerLIFXMessage.self, timeout: timeout).map { response in
             return response.message.powerState
         }
     }
     
     @discardableResult
     public func setPowerState(_ powerState: LIFXDevice.PowerState, for device: LIFXDevice? = nil) -> EventLoopFuture<Void> {
-        return LIFXMessageClient.send(SetPowerLIFXMessage(powerState: powerState), for: device, source: source)
+        return client.send(SetPowerLIFXMessage(powerState: powerState), for: device)
     }
     
     @discardableResult
@@ -49,19 +52,19 @@ public class LIFXService {
     // MARK: - Info
     
     public func getHostFirmware(for device: LIFXDevice) -> EventLoopFuture<LIFXDevice.Firmware> {
-        return LIFXMessageClient.send(GetHostFirmwareLIFXMessage(), for: device, source: source, responseType: StateHostFirmwareLIFXMessage.self, timeout: timeout).map { response in
+        return client.send(GetHostFirmwareLIFXMessage(), for: device, responseType: StateHostFirmwareLIFXMessage.self, timeout: timeout).map { response in
             return response.message.firmware
         }
     }
     
     public func getWifiFirmware(for device: LIFXDevice) -> EventLoopFuture<LIFXDevice.Firmware> {
-        return LIFXMessageClient.send(GetWifiFirmwareLIFXMessage(), for: device, source: source, responseType: StateWifiFirmwareLIFXMessage.self, timeout: timeout).map { response in
+        return client.send(GetWifiFirmwareLIFXMessage(), for: device, responseType: StateWifiFirmwareLIFXMessage.self, timeout: timeout).map { response in
             return response.message.firmware
         }
     }
     
     public func getVersion(for device: LIFXDevice) -> EventLoopFuture<LIFXDevice.Version> {
-        return LIFXMessageClient.send(GetVersionLIFXMessage(), for: device, source: source, responseType: StateVersionLIFXMessage.self, timeout: timeout).map { response in
+        return client.send(GetVersionLIFXMessage(), for: device, responseType: StateVersionLIFXMessage.self, timeout: timeout).map { response in
             return response.message.version
         }
     }
@@ -69,7 +72,7 @@ public class LIFXService {
     // MARK: - Lights
     
     public func getState(for light: LIFXLight) -> EventLoopFuture<LIFXLight.State> {
-        return LIFXMessageClient.send(GetLightStateLIFXMessage(), for: light, source: source, responseType: StateLightLIFXMessage.self, timeout: timeout).map { response in
+        return client.send(GetLightStateLIFXMessage(), for: light, responseType: StateLightLIFXMessage.self, timeout: timeout).map { response in
             let message = response.message
             return LIFXLight.State(color: message.color, powerState: message.powerState, label: message.label)
         }
@@ -85,7 +88,7 @@ public class LIFXService {
     
     @discardableResult
     public func setColor(_ color: LIFXLight.Color, for light: LIFXLight? = nil, duration: UInt32 = 0) -> EventLoopFuture<Void> {
-        return LIFXMessageClient.send(SetLightColorLIFXMessage(color: color, duration: duration), for: light, source: source)
+        return client.send(SetLightColorLIFXMessage(color: color, duration: duration), for: light)
     }
     
     @discardableResult
