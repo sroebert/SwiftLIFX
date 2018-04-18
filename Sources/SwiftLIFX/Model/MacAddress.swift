@@ -60,12 +60,6 @@ public struct MacAddress: Equatable, Hashable, CustomStringConvertible {
         return string.hashValue
     }
     
-    // MARK: - Equatable
-    
-    public static func == (lhs: MacAddress, rhs: MacAddress) -> Bool {
-        return lhs.address == rhs.address
-    }
-    
     // MARK: - CustomStringConvertible
     
     public var description: String {

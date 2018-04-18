@@ -6,20 +6,25 @@ public class LIFXDevice: Hashable, Equatable {
     // MARK: - Types
     
     public enum Service: UInt8 {
-        case UDP = 1
+        case udp = 1
+        case reserved1 = 2
+        case reserved2 = 3
+        case reserved3 = 4
     }
     
-    public struct Firmware {
+    public struct Firmware: Equatable {
         public var build: UInt64
+        let reserved: UInt64
         public var version: UInt32
         
         public init(build: UInt64, version: UInt32) {
             self.build = build
+            reserved = 0
             self.version = version
         }
     }
     
-    public struct Version {
+    public struct Version: Equatable {
         public var vendor: UInt32
         public var product: UInt32
         public var hardwareVersion: UInt32

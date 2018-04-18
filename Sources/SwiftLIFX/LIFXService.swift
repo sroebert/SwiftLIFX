@@ -72,9 +72,9 @@ public class LIFXService {
     // MARK: - Lights
     
     public func getState(for light: LIFXLight) -> EventLoopFuture<LIFXLight.State> {
-        return client.send(LIFXMessages.GetLightState(), for: light, responseType: LIFXMessages.StateLight.self, timeout: timeout).map { response in
+        return client.send(LIFXMessages.LightGet(), for: light, responseType: LIFXMessages.LightState.self, timeout: timeout).map { response in
             let message = response.message
-            return LIFXLight.State(color: message.color, powerState: message.powerState, label: message.label)
+            return message.state
         }
     }
     
@@ -88,7 +88,7 @@ public class LIFXService {
     
     @discardableResult
     public func setColor(_ color: LIFXLight.Color, for light: LIFXLight? = nil, duration: UInt32 = 0) -> EventLoopFuture<Void> {
-        return client.send(LIFXMessages.SetLightColor(color: color, duration: duration), for: light)
+        return client.send(LIFXMessages.LightSetColor(color: color, duration: duration), for: light)
     }
     
     @discardableResult

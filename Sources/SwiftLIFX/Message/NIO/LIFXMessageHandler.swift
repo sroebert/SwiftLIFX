@@ -1,10 +1,21 @@
 import NIO
 
 public class LIFXMessageHandler: ChannelInboundHandler {
-    public typealias InboundIn = AddressedEnvelope<ByteBuffer>
-    public typealias OutboundOut = AddressedEnvelope<ByteBuffer>
+    
+    // MARK: - Properties
     
     public weak var delegate: LIFXMessageHandlerDelegate?
+    
+    // MARK: - Init
+    
+    public init() {
+        
+    }
+    
+    // MARK: - ChannelInboundHandler
+    
+    public typealias InboundIn = AddressedEnvelope<ByteBuffer>
+    public typealias OutboundOut = AddressedEnvelope<ByteBuffer>
 
     public func channelRead(ctx: ChannelHandlerContext, data: NIOAny) {
         var envelope = unwrapInboundIn(data)
