@@ -23,8 +23,8 @@ struct ByteUtils {
         if !isLittleEndian {
             bytes.reverse()
         }
-        return UnsafePointer(bytes).withMemoryRebound(to: Value.self, capacity: 1) {
-            $0.advanced(by: offset).pointee
+        return UnsafePointer(bytes).advanced(by: offset).withMemoryRebound(to: Value.self, capacity: 1) {
+            $0.pointee
         }
     }
     
