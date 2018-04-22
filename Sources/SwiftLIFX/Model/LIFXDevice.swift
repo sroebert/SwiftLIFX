@@ -40,7 +40,7 @@ public class LIFXDevice: Hashable, Equatable {
         case on = 65535
         case off = 0
         
-        var toggled: PowerState {
+        public var toggled: PowerState {
             switch self {
             case .on: return .off
             case .off: return .on
