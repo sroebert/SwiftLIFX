@@ -9,6 +9,5 @@ let package = Package(
     ],
     targets: [
         .target(name: "SwiftLIFX", dependencies: ["NIO"]),
-        .target(name: "Test", dependencies: ["SwiftLIFX"]),
     ]
 )
