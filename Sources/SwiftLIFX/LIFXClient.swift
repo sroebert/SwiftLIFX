@@ -51,7 +51,7 @@ public class LIFXClient: LIFXMessageHandlerDelegate {
     
     public init(source: UInt32) {
         self.source = source
-        group = MultiThreadedEventLoopGroup(numThreads: 1)
+        group = MultiThreadedEventLoopGroup(numberOfThreads: 1)
     }
     
     // MARK: - Deinit
@@ -96,17 +96,15 @@ public class LIFXClient: LIFXMessageHandlerDelegate {
     
     private func send(_ message: LIFXMessage, for device: LIFXDevice?, sequence: UInt8, isAcknowledgementRequired: Bool, isResponseRequired: Bool) -> EventLoopFuture<Void> {
         return group.next().submit {
-            try self.socketAddresses(for: device)
-        }.then { addresses in
-            return EventLoopFuture<Void>.andAll(addresses.map { address in
-                self.send(message, using: SendConfiguration(
-                    device: device,
-                    isAcknowledgementRequired: isAcknowledgementRequired,
-                    isResponseRequired: isResponseRequired,
-                    sequence: sequence,
-                    socketAddress: address
-                ))
-            }, eventLoop: self.group.next())
+            try self.socketAddress(for: device)
+        }.then { address in
+            return self.send(message, using: SendConfiguration(
+                device: device,
+                isAcknowledgementRequired: isAcknowledgementRequired,
+                isResponseRequired: isResponseRequired,
+                sequence: sequence,
+                socketAddress: address
+            ))
         }
     }
     
@@ -130,30 +128,11 @@ public class LIFXClient: LIFXMessageHandlerDelegate {
     
     // MARK: - Utils
     
-    private func getBroadcastAddresses() throws -> [SocketAddress] {
-        return try System.enumerateInterfaces().compactMap { interface in
-            guard let broadcastAddress = interface.broadcastAddress else {
-                return nil
-            }
-            
-            switch broadcastAddress {
-            case .v4(let ipv4Address):
-                return try? SocketAddress(ipAddress: ipv4Address.host, port: LIFXConstants.broadcastPort)
-                
-            case .v6(let ipv6Address):
-                return try? SocketAddress(ipAddress: ipv6Address.host, port: LIFXConstants.broadcastPort)
-                
-            case .unixDomainSocket:
-                return nil
-            }
-        }
-    }
-    
-    private func socketAddresses(for device: LIFXDevice?) throws -> [SocketAddress] {
+    private func socketAddress(for device: LIFXDevice?) throws -> SocketAddress {
         if let socketAddress = device?.socketAddress {
-            return [socketAddress]
+            return socketAddress
         } else {
-            return try getBroadcastAddresses()
+            return try SocketAddress(ipAddress: "255.255.255.255", port: LIFXConstants.broadcastPort)
         }
     }
     
